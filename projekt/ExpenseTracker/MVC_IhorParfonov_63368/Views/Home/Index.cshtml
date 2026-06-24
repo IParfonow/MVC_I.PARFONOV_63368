@@ -1,0 +1,287 @@
+﻿@model DashboardViewModel
+@using MVC_IhorParfonov_63368.Models
+
+@{
+ViewData["Title"] = "Dashboard";
+}
+
+<div class="container text-center mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 shadow-lg p-5 rounded-4 bg-white position-relative">
+
+            <button class="position-absolute top-0 end-0 m-3 btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center p-0" data-bs-toggle="modal" data-bs-target="#settingsModal" style="width: 40px; height: 40px;">
+                ⚙️
+            </button>
+
+            <h2 class="mb-4 fw-bold">@Model.Settings.WalletName</h2>
+
+            <form method="get" asp-action="Index" class="mb-4">
+                <div class="d-flex justify-content-center align-items-center gap-2 mb-1">
+                    <input type="date" name="startDate" value="@Model.StartDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm w-auto shadow-sm" onchange="this.form.submit()" />
+                    <span class="text-muted">-</span>
+                    <input type="date" name="endDate" value="@Model.EndDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm w-auto shadow-sm" onchange="this.form.submit()" />
+                </div>
+            </form>
+
+            <div style="width: 300px; height: 300px; margin: auto;">
+                <canvas id="mainChart" style="display: block; width: 300px; height: 300px;"></canvas>
+            </div>
+
+            <div class="mt-4 d-flex justify-content-center gap-3">
+                <button class="btn btn-danger btn-lg px-4 shadow" data-bs-toggle="modal" data-bs-target="#expenseModal">Wydatek</button>
+                <button class="btn btn-success btn-lg px-4 shadow" data-bs-toggle="modal" data-bs-target="#incomeModal">Przychód</button>
+            </div>
+
+            <div class="mt-4 d-flex align-items-center justify-content-center gap-2">
+                <span class="text-muted small fw-bold text-uppercase">Zobacz:</span>
+                <button id="btnChartExp" class="btn btn-danger btn-sm shadow-sm" onclick="switchChart('expense')">Wydatki</button>
+                <button id="btnChartInc" class="btn btn-outline-success btn-sm shadow-sm" onclick="switchChart('income')">Przychody</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <div class="modal-header bg-dark text-white"><h5 class="mb-0">Ustawienia</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body text-start p-4">
+                <form asp-action="UpdateSettings" method="post">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nazwa portfela</label>
+                        <input type="text" name="WalletName" value="@Model.Settings.WalletName" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Dzień rozpoczęcia miesiąca</label>
+                        <input type="number" name="MonthStartDay" value="@Model.Settings.MonthStartDay" class="form-control" min="1" max="31" required />
+                    </div>
+                    <div class="form-check form-switch mb-4">
+                        <input class="form-check-input" type="checkbox" name="CarryOverBalance" id="carryOverCheck" value="true" @(Model.Settings.CarryOverBalance ? "checked" : "")>
+                        <label class="form-check-label fw-bold" for="carryOverCheck">Przenoś resztę z poprzedniego miesiąca</label>
+                    </div>
+                    <button type="submit" class="btn btn-dark w-100 shadow-sm">Zapisz</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editUniversalModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <div class="modal-header bg-warning text-dark"><h5 class="mb-0">Edytuj transakcję</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body text-start p-4">
+                <form id="universalEditForm">
+                    <input type="hidden" id="editUId"><input type="hidden" id="editUType">
+                    <div class="mb-3"><label>Data</label><input type="date" id="editUDate" class="form-control" required></div>
+                    <div class="mb-3"><label>Kwota (zł)</label><input type="number" step="0.01" id="editUAmount" class="form-control" required></div>
+                    <div class="mb-3"><label>Komentarz</label><input type="text" id="editUComment" class="form-control"></div>
+                    <button type="submit" class="btn btn-warning w-100">Zapisz zmiany</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="expenseModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content shadow"><div class="modal-header bg-danger text-white"><h5>Dodaj Wydatek</h5></div><div class="modal-body">@await Html.PartialAsync("_ExpenseForm", new Expense())</div></div></div></div>
+<div class="modal fade" id="incomeModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content shadow"><div class="modal-header bg-success text-white"><h5>Dodaj Przychód</h5></div><div class="modal-body">@await Html.PartialAsync("_IncomeForm", new Income())</div></div></div></div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="transactionsOffcanvas">
+    <div class="offcanvas-header border-bottom d-flex flex-column align-items-start gap-2">
+        <div class="d-flex justify-content-between w-100"><h5 class="mb-0">Historia</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+        <select id="sortSelect" class="form-select form-select-sm w-100 shadow-sm">
+            <option value="date-desc">Od najnowszych</option><option value="date-asc">Od najstarszych</option><option value="amount-desc">Kwota: od największej</option><option value="amount-asc">Kwota: od najmniejszej</option><option value="only-expense">Tylko wydatki</option><option value="only-income">Tylko przychody</option>
+        </select>
+    </div>
+    <div class="offcanvas-body"><ul id="transactionsList" class="list-group"></ul></div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("submit", async function(event) {
+        const form = event.target;
+        if (form.closest('.modal') && !form.closest('#settingsModal') && form.id !== 'universalEditForm') {
+            event.preventDefault();
+            try {
+                const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+                if (response.ok) location.reload();
+            } catch (err) { console.error(err); }
+        }
+    });
+
+    const startDateStr = '@Model.StartDate.ToString("yyyy-MM-dd")';
+    const endDateStr = '@Model.EndDate.ToString("yyyy-MM-dd")';
+
+    async function deleteTransaction(id, type) {
+        fetch(`/Home/DeleteTransaction?id=${id}&type=${encodeURIComponent(type)}`, { method: 'POST' });
+        currentTransactions = currentTransactions.filter(t => !(t.id === id && t.type === type));
+        renderTransactions(currentTransactions);
+    }
+
+    function openEditModal(id, type, amount, rawDate, comment) {
+        document.getElementById('editUId').value = id;
+        document.getElementById('editUType').value = type;
+        document.getElementById('editUAmount').value = amount.replace(',', '.');
+        document.getElementById('editUDate').value = rawDate;
+        document.getElementById('editUComment').value = comment !== 'null' ? comment : '';
+        bootstrap.Offcanvas.getInstance(document.getElementById('transactionsOffcanvas')).hide();
+        new bootstrap.Modal(document.getElementById('editUniversalModal')).show();
+    }
+
+    document.getElementById('universalEditForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('id', document.getElementById('editUId').value);
+        formData.append('type', document.getElementById('editUType').value);
+        formData.append('amount', document.getElementById('editUAmount').value);
+        formData.append('date', document.getElementById('editUDate').value);
+        formData.append('comment', document.getElementById('editUComment').value);
+        await fetch('/Home/EditTransaction', { method: 'POST', body: formData });
+        location.reload();
+    });
+
+    let currentTransactions = [];
+
+    function renderTransactions(data) {
+        const list = document.getElementById('transactionsList');
+        const sortType = document.getElementById('sortSelect').value;
+        let displayData = [...data];
+
+        if (sortType === 'only-expense') displayData = displayData.filter(t => t.type === 'Wydatek');
+        if (sortType === 'only-income') displayData = displayData.filter(t => t.type === 'Przychód');
+
+        displayData.sort((a, b) => {
+            if (sortType === 'amount-desc') return b.amount - a.amount;
+            if (sortType === 'amount-asc') return a.amount - b.amount;
+            const dateA = new Date(a.date.split('.').reverse().join('-') || a.date);
+            const dateB = new Date(b.date.split('.').reverse().join('-') || b.date);
+            if (sortType === 'date-desc') return dateB - dateA;
+            if (sortType === 'date-asc') return dateA - dateB;
+            return 0;
+        });
+
+        list.innerHTML = displayData.length > 0
+            ? displayData.map(t => {
+                const btnHtml = t.id > 0 ? `<div class="mt-2"><button class="btn btn-sm btn-outline-secondary py-0 me-1" onclick="openEditModal(${t.id}, '${t.type}', '${t.amount}', '${t.rawDate}', '${t.comment || ''}')">Edytuj</button><button class="btn btn-sm btn-outline-danger py-0" onclick="deleteTransaction(${t.id}, '${t.type}')">Usuń</button></div>` : '';
+                return `<li class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <span>${t.date} | <strong>${t.category}</strong></span>
+                            <span class="${t.type === 'Wydatek' ? 'text-danger' : 'text-success'}">${t.amount.toFixed(2)} zł</span>
+                        </div>
+                        ${t.comment ? `<div class="text-muted small mt-1"><em>${t.comment}</em></div>` : ''}
+                        ${btnHtml}
+                    </li>`}).join('')
+            : '<li class="list-group-item text-center text-muted mt-3">Brak danych</li>';
+    }
+
+    async function fetchAndShowTransactions(filter) {
+        try {
+            const response = await fetch(`/Home/GetTransactions?filter=${encodeURIComponent(filter)}&start=${startDateStr}&end=${endDateStr}`);
+            currentTransactions = await response.json();
+            document.getElementById('sortSelect').value = 'date-desc';
+            renderTransactions(currentTransactions);
+            bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('transactionsOffcanvas')).show();
+        } catch (err) { console.error(err); }
+    }
+
+    document.getElementById('sortSelect').addEventListener('change', () => renderTransactions(currentTransactions));
+
+    const expData = { labels: @Html.Raw(Json.Serialize(Model.ExpenseChartData.Select(d => d.Category))), data: @Html.Raw(Json.Serialize(Model.ExpenseChartData.Select(d => d.Total))) };
+    const incData = { labels: @Html.Raw(Json.Serialize(Model.IncomeChartData.Select(d => d.Category))), data: @Html.Raw(Json.Serialize(Model.IncomeChartData.Select(d => d.Total))) };
+
+    function switchChart(type) {
+        const dataObj = type === 'expense' ? expData : incData;
+        window.myChart.data.labels = dataObj.labels.length > 0 ? dataObj.labels : ['Brak'];
+        window.myChart.data.datasets[0].data = dataObj.data.length > 0 ? dataObj.data : [1];
+        window.myChart.data.datasets[0].backgroundColor = type === 'expense'
+            ? ['#dc3545', '#fd7e14', '#ffc107', '#0dcaf0', '#6610f2', '#20c997']
+            : ['#198754', '#20c997', '#0dcaf0', '#0d6efd', '#6610f2', '#ffc107'];
+        window.myChart.update();
+
+        document.getElementById('btnChartExp').className = type === 'expense' ? 'btn btn-danger btn-sm shadow-sm' : 'btn btn-outline-danger btn-sm shadow-sm';
+        document.getElementById('btnChartInc').className = type === 'income' ? 'btn btn-success btn-sm shadow-sm' : 'btn btn-outline-success btn-sm shadow-sm';
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const canvas = document.getElementById('mainChart');
+        if (!canvas) return;
+
+        let hoveredZone = null;
+        const centerTextPlugin = {
+            id: 'centerText',
+            afterDraw: (chart) => {
+                const { ctx, chartArea: { width, height } } = chart;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const drawHighlight = (yPos, zoneName) => {
+                    if (hoveredZone === zoneName) {
+                        ctx.fillStyle = '#f8f9fa'; ctx.fillRect(centerX - 80, yPos - 15, 160, 30);
+                    }
+                };
+
+                drawHighlight(centerY - 20, 'Saldo');
+                drawHighlight(centerY + 10, 'Wydatki');
+                drawHighlight(centerY + 35, 'Przychody');
+
+                ctx.fillStyle = '#212529'; ctx.font = 'bold 18px sans-serif';
+                ctx.fillText('Saldo: @Model.TotalBalance.ToString("F2") zł', centerX, centerY - 20);
+                ctx.fillStyle = '#dc3545'; ctx.font = '14px sans-serif';
+                ctx.fillText('Wydatki: @Model.TotalExpensesMonth.ToString("F2") zł', centerX, centerY + 10);
+                ctx.fillStyle = '#198754';
+                ctx.fillText('Przychody: @Model.TotalIncomes.ToString("F2") zł', centerX, centerY + 35);
+                ctx.restore();
+            }
+        };
+
+        Chart.Tooltip.positioners.cursor = function(elements, eventPosition) {
+            if (!elements.length) return false; return { x: eventPosition.x, y: eventPosition.y };
+        };
+
+        window.myChart = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: expData.labels.length > 0 ? expData.labels : ['Brak'],
+                datasets: [{
+                    data: expData.data.length > 0 ? expData.data : [1],
+                    backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#0dcaf0', '#6610f2', '#20c997'],
+                    borderWidth: 0, cutout: '80%'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { position: 'cursor', caretPadding: 15, callbacks: { label: function(context) { return ' ' + (context.parsed || 0).toFixed(2) + ' zł'; } } }
+                },
+                onHover: (event, elements, chart) => {
+                    const rect = chart.chartArea;
+                    const centerX = (rect.left + rect.right) / 2;
+                    const centerY = (rect.top + rect.bottom) / 2;
+                    let newZone = null;
+                    if (Math.abs(event.x - centerX) <= 80) {
+                        if (event.y >= centerY - 35 && event.y <= centerY - 5) newZone = 'Saldo';
+                        else if (event.y > centerY - 5 && event.y <= centerY + 25) newZone = 'Wydatki';
+                        else if (event.y > centerY + 25 && event.y <= centerY + 50) newZone = 'Przychody';
+                    }
+                    if (hoveredZone !== newZone) { hoveredZone = newZone; chart.draw(); }
+                    chart.canvas.style.cursor = (newZone || elements.length > 0) ? 'pointer' : 'default';
+                },
+                onClick: (event, elements, chart) => {
+                    if (elements.length > 0 && chart.data.datasets[0].data[0] !== 1) {
+                        fetchAndShowTransactions(chart.data.labels[elements[0].index]);
+                    } else if (hoveredZone) {
+                        fetchAndShowTransactions({ 'Saldo': 'all', 'Wydatki': 'expense', 'Przychody': 'income' }[hoveredZone]);
+                    }
+                }
+            },
+            plugins: [centerTextPlugin]
+        });
+    });
+</script>
+}

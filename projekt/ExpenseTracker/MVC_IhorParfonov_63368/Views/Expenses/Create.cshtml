@@ -1,0 +1,28 @@
+﻿@model MVC_IhorParfonov_63368.Models.Expense
+
+@{
+    ViewData["Title"] = "Dodaj wydatek";
+}
+
+<h1>Dodaj wydatek</h1>
+
+<form asp-action="Create">
+    <div class="form-group">
+        <label>Kategoria</label>
+        <input asp-for="Category" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Kwota</label>
+        <input asp-for="Amount" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Data</label>
+        <input asp-for="Date" class="form-control" />
+    </div>
+    <br />
+    <button type="submit" class="btn btn-primary">Zapisz</button>
+</form>
+
+<div>
+    <a asp-action="Index">Powrót do listy</a>
+</div>

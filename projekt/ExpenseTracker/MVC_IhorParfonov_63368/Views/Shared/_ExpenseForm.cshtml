@@ -1,0 +1,31 @@
+﻿@model Expense
+@using MVC_IhorParfonov_63368.Models
+
+<form asp-controller="Expenses" asp-action="Create" method="post" onsubmit="submitForm(event, this)">
+    <div class="mb-3">
+        <label>Kategoria</label>
+        <select name="Category" class="form-control" required>
+            <option value="" disabled selected>Wybierz kategorię</option>
+            @if (ViewBag.ExpenseCategories != null)
+            {
+                foreach (var cat in (List<ExpenseCategory>)ViewBag.ExpenseCategories)
+                {
+                    <option value="@cat.Name">@cat.Name</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label>Kwota</label>
+        <input asp-for="Amount" class="form-control" type="number" step="0.01" required />
+    </div>
+    <div class="mb-3">
+        <label>Data</label>
+        <input asp-for="Date" class="form-control" type="date" value="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+    </div>
+    <div class="mb-3">
+        <label>Komentarz (opcjonalnie)</label>
+        <input asp-for="Comment" class="form-control" type="text" placeholder="Dodaj opis..." />
+    </div>
+    <button type="submit" class="btn btn-primary">Zapisz</button>
+</form>

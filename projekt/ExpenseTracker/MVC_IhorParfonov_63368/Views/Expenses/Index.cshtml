@@ -1,0 +1,31 @@
+﻿@model IEnumerable<MVC_IhorParfonov_63368.Models.Expense>
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Lista wydatków";
+}
+
+<h1>Lista wydatków</h1>
+
+<p>
+    <a asp-action="Create">Dodaj nowy wydatek</a>
+</p>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Kategoria</th>
+        <th>Kwota</th>
+        <th>Data</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model) {
+        <tr>
+            <td>@Html.DisplayFor(modelItem => item.Category)</td>
+            <td>@Html.DisplayFor(modelItem => item.Amount)</td>
+            <td>@Html.DisplayFor(modelItem => item.Date)</td>
+        </tr>
+    }
+    </tbody>
+</table>
